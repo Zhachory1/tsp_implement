@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Bazel outputs
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+bazel-tsp_implement/
