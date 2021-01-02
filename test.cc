@@ -2,9 +2,9 @@
 // Solve the traveling Salesman problem.
 //
 // To compile, use this command:
-//  g++ test.cc -lstdc++ -std=c++11
+//  bazel build :tsp_main
 // To run, use this command:
-//  ./a.out file_name.txt
+//  bazel run :tsp_main file_name.txt
 
 #include <string>
 #include <iostream>
