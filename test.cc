@@ -4,32 +4,40 @@
 // To compile, use this command:
 //  bazel build :tsp_main
 // To run, use this command:
-//  bazel run :tsp_main file_name.txt
+//  bazel run :tsp_main -- --graph_file=file_name.txt
 
-#include <string>
-#include <iostream>
-#include <sstream>
+#include <algorithm>
+#include <cctype>
+#include <climits>
 #include <fstream>
-#include <vector>
+#include <functional>
+#include <iostream>
+#include <locale>
+#include <sstream>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <climits>
-#include <algorithm>
-#include <functional>
-#include <cctype>
-#include <locale>
+#include <vector>
 
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "glog/logging.h"
+
+ABSL_FLAG(std::string, graph_file, "", "File with input graph");
+ABSL_FLAG(int, algorithm , 1, "Which algorithm to choose.");
 
 typedef std::unordered_map< std::string, std::unordered_map<std::string, int> > Graph;
 typedef std::pair< std::string, int > TspResult;
 typedef std::unordered_set< std::string > FoundCities;
 
+enum class Algorithm { kUndefined, kClosestNeighbor };
+
 template<typename K, typename V>
-void print_map(std::unordered_map<K,V> const &m)
-{
+void print_map(std::unordered_map<K,V> const &m) {
     for (auto const& pair: m) {
         LOG(INFO) << "{" << pair.first << ": " << pair.second << "}";
     }
@@ -142,8 +150,8 @@ Graph readInGraph(std::string filename) {
       auto a_edges = graph.find(tokens[0]);
       auto b_edges = graph.find(tokens[1]);
       if (a_edges != graph.end() && b_edges != graph.end()) {
-        a_edges->second.insert({tokens[1], std::stoi(tokens[2])}).second;
-        b_edges->second.insert({tokens[0], std::stoi(tokens[2])}).second;
+        a_edges->second.insert({tokens[1], std::stoi(tokens[2])});
+        b_edges->second.insert({tokens[0], std::stoi(tokens[2])});
       }
     } else {
       std::unordered_map<std::string, int> temp;
@@ -154,16 +162,26 @@ Graph readInGraph(std::string filename) {
 }
 
 int main(int argc, char** argv) {
-  // Take in graph
-  if (argc < 2) {
-    std::cout << "Please provide the file name.\n";
-    return 0;
-  }
-  const Graph& graph = readInGraph(argv[1]);
-  LOG(INFO) << graph.size();
-  print_map(graph.at("A"));
+  google::InitGoogleLogging(argv[0]);
+  absl::SetProgramUsageMessage(
+    "This program solves TSP with an algorithm of your choosing.");
+  absl::ParseCommandLine(argc, argv);
 
-  absl::StatusOr<TspResult> result = closest_neighbor(graph);
+  const Graph& graph = readInGraph(absl::GetFlag(FLAGS_graph_file));
+  LOG(INFO) << "Graph size: " << graph.size();
+
+  const Algorithm algo = Algorithm(absl::GetFlag(FLAGS_algorithm));
+
+  absl::StatusOr<TspResult> result;
+  switch (algo) {
+    case Algorithm::kClosestNeighbor:
+      LOG(INFO) << "Running the closest neighbor algorithm...";
+      result = closest_neighbor(graph);
+      break;
+    default:
+      LOG(ERROR) << "Please input a valid algorithm.";
+      return 1;
+  }
 
   if (result.ok()) {
     std::cout << "Path: " << result->first << "\n";
